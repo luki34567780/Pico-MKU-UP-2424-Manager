@@ -23,32 +23,32 @@ char* MkuUP2424Manager::saprintf(const char *format, ...)
     return buf;
 }
 
-void MkuUP2424Manager::LogMessagePrintf(const char *msg, ...)
+void MkuUP2424Manager::LogMessagePrintf(const char *msg, const char *caller, const int line, ...)
 {
+    va_list args;
+    va_start(args, msg);
+
     if (_verboseLogging)
     {
-        const char *caller = __builtin_FUNCTION();
-        const int line = __builtin_LINE();
-        va_list args;
-        va_start(args, msg);
-
         int cnt = vsprintf(nullptr, msg, args);
 
         auto buf = (char *)malloc(cnt);
 
         vsprintf(buf, msg, args);
 
-        Serial.printf("Module: %s, Method: %s, Line: %d: %s\n", nameof::nameof_full_type<MkuUP2424Manager>().data(), caller, line, buf);
+        LogMessage(buf, caller, line);
 
         free(buf);
     }
+
+    va_end(args);
 }
 
-void MkuUP2424Manager::LogMessage(const char *msg, const char *caller = __builtin_FUNCTION(), const int line = __builtin_LINE())
+void MkuUP2424Manager::LogMessage(const char *msg, const char *caller, const int line)
 {
     if (_verboseLogging)
     {
-        Serial.printf("Module: %s, Method: %s, Line: %d: %s\n", nameof::nameof_full_type<MkuUP2424Manager>().data(), caller, line, msg);
+        Serial.printf("[%f]: Module: %s, Method: %s, Line: %d: %s\n", (double)micros() / 1000000.0, nameof::nameof_full_type<MkuUP2424Manager>().data(), caller, line, msg);
     }
 }
 
@@ -72,9 +72,9 @@ void MkuUP2424Manager::Init(int baud)
 TransmitterMode MkuUP2424Manager::GetMode()
 {
     LogMessage("GetMode() called");
-    sendCommand("p");
+    sendCommand('p');
 
-    auto val = _serial->read();
+    auto val = readByteWithTimeout(_receiveWaitTime);
 
     switch (val)
     {
@@ -87,22 +87,22 @@ TransmitterMode MkuUP2424Manager::GetMode()
         default:
             if (_verboseLogging)
             {
-                Serial.printf("Module: %s, Method: %s, Line: %d: GetMode() serial response value is bad! Expected %d or %d, got %d\n", nameof::nameof_full_type<MkuUP2424Manager>().data(), "GetMode", __builtin_LINE(), '0', '1', (byte)val);
+                LogMessagePrintf("GetMode() serial response value is bad! Expected %d or %d, got dec: %d str: '%c'", __builtin_FUNCTION(), __builtin_LINE(), '0', '1', val, (char)val);
             }
             return TransmitterMode::TRANSMITTER_ERROR;
     }
 }
 
-void MkuUP2424Manager::sendCommand(const char *command)
+void MkuUP2424Manager::sendCommand(const char command)
 {
-    _serial->write(command, strlen(command));
-    _serial->write('\r');
+    _serial->print(command);
+    _serial->print('\r');
 }
 
 byte MkuUP2424Manager::GetForwardPower()
 {
     LogMessage("Getting forward power");
-    sendCommand("f");
+    sendCommand('f');
     
     delay(_receiveWaitTime);
 
@@ -112,7 +112,7 @@ byte MkuUP2424Manager::GetForwardPower()
 byte MkuUP2424Manager::GetReversePower()
 {
     LogMessage("Getting reverse power");
-    sendCommand("r");
+    sendCommand('r');
 
     delay(_receiveWaitTime);
 
@@ -122,9 +122,9 @@ byte MkuUP2424Manager::GetReversePower()
 PowerState MkuUP2424Manager::GetPowerState()
 {
     LogMessage("Getting power state");
-    sendCommand("o");
+    sendCommand('o');
 
-    auto val = readByteWithTimeout(1000);
+    auto val = readByteWithTimeout(_receiveWaitTime);
 
     switch (val)
     {
@@ -133,7 +133,7 @@ PowerState MkuUP2424Manager::GetPowerState()
         case '1':
             return PowerState::ON;
         default:
-            LogMessagePrintf("GetPowerState() serial response value is bad! Expected %d or %d, got %d", '0', '1', val);
+            LogMessagePrintf("GetPowerState() serial response value is bad! Expected %d or %d, got %d", __builtin_FUNCTION(), __builtin_LINE(), '0', '1', val);
             return PowerState::POWERSTATE_ERROR;
     }
 }
@@ -151,7 +151,12 @@ int MkuUP2424Manager::readByteWithTimeout(int timeout)
     {
         if (_serial->available())
         {
-            return _serial->read();
+            auto res = _serial->read();
+
+            if (res != 255)
+            {
+                return res;
+            }
         }
     }
 
@@ -161,16 +166,11 @@ int MkuUP2424Manager::readByteWithTimeout(int timeout)
 bool MkuUP2424Manager::TrySendConfigCommand(const char *command)
 {
     _serial->write(command, strlen(command));
-    _serial->write("\r");
+    _serial->print('\r');
 
-    auto resp = readByteWithTimeout(1000);
+    auto resp = readByteWithTimeout(_receiveWaitTime);
 
-    LogMessagePrintf("Command Response: %d\n", resp);
-
-    //     auto buf = (char *)malloc(sprintf(nullptr, ));
-    // sprintf(buf, "Command Response: %d\n", resp);
-    // LogMessage(buf);
-    // free(buf);
+    LogMessagePrintf("Command Response: dec: %d str: %c", __builtin_FUNCTION(), __builtin_LINE(), resp, (char)resp);
 
     return resp == 'A';
 }

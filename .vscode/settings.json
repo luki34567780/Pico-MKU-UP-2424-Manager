@@ -19,6 +19,7 @@
     ],
     "files.associations": {
         "type_traits": "cpp",
-        "cstdio": "cpp"
+        "cstdio": "cpp",
+        "cstddef": "cpp"
     }
 }

@@ -31,14 +31,14 @@ public:
     double GetTemperature();
     bool TrySetMode(TransmitterMode mode);
     bool TrySetPowerState(PowerState state);
+    void LogMessage(const char *msg, const char *caller = __builtin_FUNCTION(), const int line = __builtin_LINE());
+    void LogMessagePrintf(const char *msg, const char *caller = __builtin_FUNCTION(), const int line = __builtin_LINE(), ...);
 private:
-    void LogMessage(const char *msg, const char *caller, const int line);
     bool TrySendConfigCommand(const char* command);
-    void sendCommand(const char *command);
+    void sendCommand(const char command);
     HardwareSerial *_serial;
     int _receiveWaitTime;
     int readByteWithTimeout(int timeout);
     bool _verboseLogging;
-    void LogMessagePrintf(const char *msg, ...);
     char *saprintf(const char *format, ...);
 };
