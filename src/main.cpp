@@ -10,9 +10,9 @@
 SoftwareSerial sw_serial(1, 0, true);
 
 #if DEBUG
-MkuUP2424Manager manager(&sw_serial, 10000, true);
+MkuUP2424Manager manager(&sw_serial, true);
 #else
-MkuUP2424Manager manager(&sw_serial, 10000, false);
+MkuUP2424Manager manager(&sw_serial, false);
 #endif
 
 bool old_state = !ACTIVE_PIN_STATE;

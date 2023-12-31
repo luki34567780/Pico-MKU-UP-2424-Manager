@@ -2,10 +2,9 @@
 #include <cstdio>
 #include <stacktrace>
 
-MkuUP2424Manager::MkuUP2424Manager(HardwareSerial *serial, int receiveWaitTime, bool verboseLogging)
+MkuUP2424Manager::MkuUP2424Manager(HardwareSerial *serial, bool verboseLogging)
 {
     _serial = serial;
-    _receiveWaitTime = receiveWaitTime;
     _verboseLogging = verboseLogging;
 }
 
@@ -70,41 +69,13 @@ void MkuUP2424Manager::Init(int baud)
     _serial->begin(baud);
 }
 
-int MkuUP2424Manager::readByteWithTimeout(int timeout)
-{
-    auto start = millis();
-
-    while (start + timeout > millis())
-    {
-        if (_serial->available())
-        {
-            auto res = _serial->read();
-
-            if (res != 255)
-            {
-                // discharge carriage return
-                auto val = _serial->read();
-
-                if (val != '\r')
-                {
-                    LogMessagePrintf("Invalid end-of-response character! Dec: %d str: '%c'", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::ERROR, val, (char) val);
-                }
-
-                return res;
-            }
-        }
-    }
-
-    return -1;
-}
-
-void MkuUP2424Manager::TrySendConfigCommand(const char *command)
+void MkuUP2424Manager::SendConfigCommand(const char *command)
 {
     _serial->write(command, strlen(command));
     _serial->print('\r');
 }
 
-void MkuUP2424Manager::TrySetMode(TransmitterMode mode)
+void MkuUP2424Manager::SetMode(TransmitterMode mode)
 {
     const char* cmd = nullptr;
     switch(mode)
@@ -120,10 +91,10 @@ void MkuUP2424Manager::TrySetMode(TransmitterMode mode)
             panic("Invalid TransmitterMode!");
     }
 
-    TrySendConfigCommand(cmd);
+    SendConfigCommand(cmd);
 }
 
-void MkuUP2424Manager::TrySetPowerState(PowerState state)
+void MkuUP2424Manager::SetPowerState(PowerState state)
 {
 
     const char *cmd = nullptr;
@@ -140,5 +111,5 @@ void MkuUP2424Manager::TrySetPowerState(PowerState state)
         panic("Invalid PowerState!");
     }
 
-    TrySendConfigCommand(cmd);
+    SendConfigCommand(cmd);
 }
