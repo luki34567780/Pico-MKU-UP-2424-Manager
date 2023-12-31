@@ -6,7 +6,6 @@
 #define EVENT_PIN 10
 #define ALWAYS_HIGH_PIN 11
 #define ACTIVE_PIN_STATE true
-#define BAUD 115200
 
 // change this from LED_BUILTIN to some pin
 // to add a external PTT indicator
