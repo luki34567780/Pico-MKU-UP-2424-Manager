@@ -1,12 +1,13 @@
 #include <Arduino.h>
 #include <MkuUP2424BManager.h>
 #include <SoftwareSerial.h>
+#include <hardware/gpio.h>
 
 #define EVENT_PIN 10
 #define ALWAYS_HIGH_PIN 11
 #define ACTIVE_PIN_STATE true
 
-#define SOFTWARE_SERIAL false
+#define SOFTWARE_SERIAL true
 
 #if !SOFTWARE_SERIAL
 MkuUP2424Manager manager(&Serial1, 10000, true);
@@ -21,8 +22,6 @@ bool old_state = !ACTIVE_PIN_STATE;
 
 void setup() {
   while (!Serial) ;
-
-  Serial1.
 
   delay(100);
 
@@ -59,39 +58,15 @@ void setup() {
   delay(1000);
   gpio_put(LED_BUILTIN, 0);
 
-  auto online = manager.IsPoweredOn();
-
-  manager.LogMessagePrintf("Powered on: %s", __builtin_FUNCTION(), __builtin_LINE(), online ? "true" : "false");
-
-  while (!online)
-  {
-    manager.LogMessage("Please power on and try again!");
-    
-    delay(100);
-
-    online = manager.IsPoweredOn();
-  }
-
   auto mode = manager.GetMode();
 
-  manager.LogMessagePrintf("Current Transmitter state: %s", __builtin_FUNCTION(), __builtin_LINE(), nameof::nameof_enum_flag(mode).data());
-
-  if (manager.TrySetMode(TransmitterMode::TX))
-  {
-    manager.LogMessage("Setting to TX mode worked!");
-  }
-  else
-  {
-    manager.LogMessage("Setting To TX mode failed!");
-  }
-
-  mode = manager.GetMode();
-
-  manager.LogMessagePrintf("Current transmitter state: %s\n", __builtin_FUNCTION(), __builtin_LINE(), nameof::nameof_enum_flag(mode).data());
+  manager.LogMessagePrintf("Current Transmitter state: %s", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::INFO, nameof::nameof_enum_flag(mode).data());
 }
 
 void loop() {
   auto new_state = gpio_get(EVENT_PIN);
+  auto start = millis();
+
   if (new_state != old_state)
   {
     if (new_state == ACTIVE_PIN_STATE)
@@ -103,21 +78,33 @@ void loop() {
         res = manager.TrySetMode(TransmitterMode::TX);
       }
       
-      manager.LogMessage("Setting Power mode failed!");
+      if (!res)
+      {
+        manager.LogMessage("Setting Power mode failed!");
+      }
+
+      manager.LogMessagePrintf("Mode switch took %f ms", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::INFO, millis() - start);
     }
     else
     {
-      bool res = manager.TrySetMode(TransmitterMode::TX);
+      bool res = manager.TrySetMode(TransmitterMode::RX);
 
       if (!res)
       {
-        res = manager.TrySetMode(TransmitterMode::TX);
+        manager.LogMessage("Retrying mode change");
+
+        res = manager.TrySetMode(TransmitterMode::RX);
       }
 
-      manager.LogMessage("Setting Power mode failed!");
+      if (!res)
+      {
+        manager.LogMessage("Setting Power mode failed!");
+      }
+
+      manager.LogMessagePrintf("Mode switch took %f ms", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::INFO, millis() - start);
     }
 
-    // todo: remove after testing is finished
+    #ifdef DEBUG
     for (int i = 0; i < 3; i++)
     {
       gpio_put(LED_BUILTIN, true);
@@ -125,6 +112,7 @@ void loop() {
       gpio_put(LED_BUILTIN, false);
       delay(100);
     }
+    #endif
 
     old_state = new_state;
   }

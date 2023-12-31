@@ -1,11 +1,22 @@
 #include <MkuUP2424BManager.h>
 #include <cstdio>
+#include <stacktrace>
 
 MkuUP2424Manager::MkuUP2424Manager(HardwareSerial *serial, int receiveWaitTime, bool verboseLogging)
 {
     _serial = serial;
     _receiveWaitTime = receiveWaitTime;
     _verboseLogging = verboseLogging;
+}
+
+void MkuUP2424Manager::LogSpacer(const char *caller, const int line)
+{
+    if (_verboseLogging)
+    {
+        LogMessage("", LogLevel::UNDEFINED, caller, line);
+        LogMessage("==================================================", LogLevel::UNDEFINED, caller, line);
+        LogMessage("", LogLevel::UNDEFINED, caller, line);
+    }
 }
 
 char* MkuUP2424Manager::saprintf(const char *format, ...)
@@ -23,7 +34,7 @@ char* MkuUP2424Manager::saprintf(const char *format, ...)
     return buf;
 }
 
-void MkuUP2424Manager::LogMessagePrintf(const char *msg, const char *caller, const int line, ...)
+void MkuUP2424Manager::LogMessagePrintf(const char *msg, const char *caller, const int line, LogLevel logLevel, ...)
 {
     va_list args;
     va_start(args, msg);
@@ -36,7 +47,7 @@ void MkuUP2424Manager::LogMessagePrintf(const char *msg, const char *caller, con
 
         vsprintf(buf, msg, args);
 
-        LogMessage(buf, caller, line);
+        LogMessage(buf, logLevel, caller, line);
 
         free(buf);
     }
@@ -44,11 +55,11 @@ void MkuUP2424Manager::LogMessagePrintf(const char *msg, const char *caller, con
     va_end(args);
 }
 
-void MkuUP2424Manager::LogMessage(const char *msg, const char *caller, const int line)
+void MkuUP2424Manager::LogMessage(const char *msg, LogLevel logLevel, const char *caller, const int line)
 {
     if (_verboseLogging)
     {
-        Serial.printf("[%f]: Module: %s, Method: %s, Line: %d: %s\n", (double)micros() / 1000000.0, nameof::nameof_full_type<MkuUP2424Manager>().data(), caller, line, msg);
+        Serial.printf("[%f] [%s]: Module: %s, Method: %s, Line: %d: %s\n", (double)micros() / 1000000.0, nameof::nameof_enum<LogLevel>(logLevel).data(), nameof::nameof_full_type<MkuUP2424Manager>().data(), caller, line, msg);
     }
 }
 
@@ -87,7 +98,7 @@ TransmitterMode MkuUP2424Manager::GetMode()
         default:
             if (_verboseLogging)
             {
-                LogMessagePrintf("GetMode() serial response value is bad! Expected %d or %d, got dec: %d str: '%c'", __builtin_FUNCTION(), __builtin_LINE(), '0', '1', val, (char)val);
+                LogMessagePrintf("GetMode() serial response value is bad! Expected %d or %d, got dec: %d str: '%c'", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::ERROR, '0', '1', val, (char)val);
             }
             return TransmitterMode::TRANSMITTER_ERROR;
     }
@@ -99,24 +110,30 @@ void MkuUP2424Manager::sendCommand(const char command)
     _serial->print('\r');
 }
 
-byte MkuUP2424Manager::GetForwardPower()
+double MkuUP2424Manager::GetForwardPower()
 {
     LogMessage("Getting forward power");
     sendCommand('f');
-    
-    delay(_receiveWaitTime);
 
-    return _serial->readString().toInt();
+    auto str = _serial->readStringUntil('\r');
+    auto val = str.toDouble();
+
+    LogMessagePrintf("Got forward power, string: '%s' decimal: '%f", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::DEBUG, str, val);
+
+    return val;
 }
 
-byte MkuUP2424Manager::GetReversePower()
+double MkuUP2424Manager::GetReversePower()
 {
     LogMessage("Getting reverse power");
     sendCommand('r');
 
-    delay(_receiveWaitTime);
+    auto str = _serial->readStringUntil('\r');
+    auto val = str.toDouble();
 
-    return _serial->readString().toInt();
+    LogMessagePrintf("Got reverse power, string: '%s' decimal: '%f", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::DEBUG, str, val);
+
+    return val;
 }
 
 PowerState MkuUP2424Manager::GetPowerState()
@@ -133,7 +150,7 @@ PowerState MkuUP2424Manager::GetPowerState()
         case '1':
             return PowerState::ON;
         default:
-            LogMessagePrintf("GetPowerState() serial response value is bad! Expected %d or %d, got %d", __builtin_FUNCTION(), __builtin_LINE(), '0', '1', val);
+            LogMessagePrintf("GetPowerState() serial response value is bad! Expected %d or %d, got %d", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::ERROR, '0', '1', val);
             return PowerState::POWERSTATE_ERROR;
     }
 }
@@ -155,6 +172,14 @@ int MkuUP2424Manager::readByteWithTimeout(int timeout)
 
             if (res != 255)
             {
+                // discharge carriage return
+                auto val = _serial->read();
+
+                if (val != '\r')
+                {
+                    LogMessagePrintf("Invalid end-of-response character! Dec: %d str: '%c'", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::ERROR, val, (char) val);
+                }
+
                 return res;
             }
         }
@@ -168,11 +193,11 @@ bool MkuUP2424Manager::TrySendConfigCommand(const char *command)
     _serial->write(command, strlen(command));
     _serial->print('\r');
 
-    auto resp = readByteWithTimeout(_receiveWaitTime);
+    auto val = readByteWithTimeout(_receiveWaitTime);
 
-    LogMessagePrintf("Command Response: dec: %d str: %c", __builtin_FUNCTION(), __builtin_LINE(), resp, (char)resp);
+    LogMessagePrintf("Command Response: dec: %d str: '%c'", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::DEBUG, val, (char)val);
 
-    return resp == 'A';
+    return val == 'A';
 }
 
 bool MkuUP2424Manager::TrySetMode(TransmitterMode mode)

@@ -20,6 +20,7 @@
     "files.associations": {
         "type_traits": "cpp",
         "cstdio": "cpp",
-        "cstddef": "cpp"
+        "cstddef": "cpp",
+        "stacktrace": "cpp"
     }
 }
