@@ -28,7 +28,7 @@ This project utilizes the Raspberry Pi Pico to control the MKU UP 2424 transceiv
 ## Known Issues and Pitfalls:
 
 - If the transceiver is not reacting, try swapping RX and TX. A RS232 cable normally should have TX and RX crossed, but this is sometimes not the case.
-- If the transceiver is not reacting, check that you have the binary with the correct BAUD (the old firmware has a baud of 9600, the new one has 115200)
+- If the transceiver is not reacting, check that you have the binary with the correct BAUD (115200 for firmware before 2.1, 9600 for firmware 2.1 and newer)
 - If you're using a pico W the builtin LED won't work. 
 
 
