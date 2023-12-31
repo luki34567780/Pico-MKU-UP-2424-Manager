@@ -9,7 +9,7 @@ This project utilizes the Raspberry Pi Pico to control the MKU UP 2424 transceiv
 
 ## Installing:
 
-1. Download the binary ([9600 Baud](firmware_9600.uf2), [115200 Baud](firmware_115200.uf2))
+1. Download the binary ([9600 Baud](https://raw.githubusercontent.com/luki34567780/tx_controller/master/firmware_9600.uf2), [115200 Baud](https://raw.githubusercontent.com/luki34567780/tx_controller/master/firmware_115200.uf2))
 
 2. Push down the 'boot' button on your Raspberry pi pico
 
