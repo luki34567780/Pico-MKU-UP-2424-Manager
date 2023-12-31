@@ -7,38 +7,26 @@
 #define ALWAYS_HIGH_PIN 11
 #define ACTIVE_PIN_STATE true
 
-#define SOFTWARE_SERIAL true
-
-#if !SOFTWARE_SERIAL
-MkuUP2424Manager manager(&Serial1, 10000, true);
-#endif
-
-#if SOFTWARE_SERIAL
 SoftwareSerial sw_serial(1, 0, true);
+
+#if DEBUG
 MkuUP2424Manager manager(&sw_serial, 10000, true);
+#else
+MkuUP2424Manager manager(&sw_serial, 10000, false);
 #endif
 
 bool old_state = !ACTIVE_PIN_STATE;
 
 void setup() {
+  #if DEBUG
   while (!Serial) ;
 
   delay(100);
-
-#if SOFTWARE_SERIAL
-  gpio_set_pulls(0, true, false);
-  gpio_set_pulls(1, true, false);
-#endif
-
-#if !SOFTWARE_SERIAL
-  manager.Init(9600, 1, 0);
-#endif
-
-#if SOFTWARE_SERIAL
-  manager.Init(9600);
   #endif
 
-  delay(100);
+  gpio_set_pulls(0, true, false);
+  gpio_set_pulls(1, true, false);
+  manager.Init(9600);
 
   gpio_set_pulls(0, true, false);
   gpio_set_pulls(1, true, false);
@@ -57,51 +45,27 @@ void setup() {
   gpio_put(LED_BUILTIN, 1);
   delay(1000);
   gpio_put(LED_BUILTIN, 0);
-
-  auto mode = manager.GetMode();
-
-  manager.LogMessagePrintf("Current Transmitter state: %s", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::INFO, nameof::nameof_enum_flag(mode).data());
 }
 
 void loop() {
   auto new_state = gpio_get(EVENT_PIN);
-  auto start = millis();
+  auto start = micros();
 
   if (new_state != old_state)
   {
     if (new_state == ACTIVE_PIN_STATE)
     {
-      bool res = manager.TrySetMode(TransmitterMode::TX);
-      
-      if (!res)
-      {
-        res = manager.TrySetMode(TransmitterMode::TX);
-      }
-      
-      if (!res)
-      {
-        manager.LogMessage("Setting Power mode failed!");
-      }
+      manager.TrySetMode(TransmitterMode::TX);
+      manager.TrySetMode(TransmitterMode::TX);
 
-      manager.LogMessagePrintf("Mode switch took %f ms", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::INFO, millis() - start);
+      manager.LogMessagePrintf("Mode switch took %f ms", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::INFO, (double)(micros() - start) / 1000.0);
     }
     else
     {
-      bool res = manager.TrySetMode(TransmitterMode::RX);
+      manager.TrySetMode(TransmitterMode::RX);
+      manager.TrySetMode(TransmitterMode::RX);
 
-      if (!res)
-      {
-        manager.LogMessage("Retrying mode change");
-
-        res = manager.TrySetMode(TransmitterMode::RX);
-      }
-
-      if (!res)
-      {
-        manager.LogMessage("Setting Power mode failed!");
-      }
-
-      manager.LogMessagePrintf("Mode switch took %f ms", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::INFO, millis() - start);
+      manager.LogMessagePrintf("Mode switch took %f ms", __builtin_FUNCTION(), __builtin_LINE(), LogLevel::INFO, (double)(micros() - start) / 1000.0);
     }
 
     #ifdef DEBUG
