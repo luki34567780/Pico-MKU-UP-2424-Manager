@@ -1,36 +1,9 @@
 #include <MkuUP2424BManager.h>
-#include <cstdio>
-#include <stacktrace>
 
 MkuUP2424Manager::MkuUP2424Manager(HardwareSerial *serial, bool verboseLogging)
 {
     _serial = serial;
     _verboseLogging = verboseLogging;
-}
-
-void MkuUP2424Manager::LogSpacer(const char *caller, const int line)
-{
-    if (_verboseLogging)
-    {
-        LogMessage("", LogLevel::UNDEFINED, caller, line);
-        LogMessage("==================================================", LogLevel::UNDEFINED, caller, line);
-        LogMessage("", LogLevel::UNDEFINED, caller, line);
-    }
-}
-
-char* MkuUP2424Manager::saprintf(const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-
-    int cnt = vsprintf(nullptr, format, args);
-    auto buf = (char *)malloc(cnt);
-
-    vsprintf(buf, format, args);
-
-    va_end(args);
-
-    return buf;
 }
 
 void MkuUP2424Manager::LogMessagePrintf(const char *msg, const char *caller, const int line, LogLevel logLevel, ...)
